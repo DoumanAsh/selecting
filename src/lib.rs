@@ -7,7 +7,8 @@
 
 mod sys;
 
-pub use sys::{FdSet, AsRawFd};
+use sys::FdSet;
+pub use sys::{AsRawFd};
 
 use std::io;
 use core::time;

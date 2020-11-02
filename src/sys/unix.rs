@@ -66,11 +66,6 @@ impl FdSet {
     pub fn len(&self) -> usize {
         self.count
     }
-
-    #[inline]
-    pub fn raw(&self) -> Self {
-        self.clone()
-    }
 }
 
 pub fn select(read: &mut FdSet, write: &mut FdSet) -> io::Result<usize> {
