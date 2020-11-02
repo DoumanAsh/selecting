@@ -1,0 +1,23 @@
+[package]
+name = "selecting"
+version = "1.0.0"
+authors = ["Douman <douman@gmx.se>"]
+edition = "2018"
+license = "BSL-1.0"
+repository = "https://github.com/DoumanAsh/selecting"
+readme = "README.md"
+description = "Cross-platform over select"
+categories = ["asynchronous", "network-programming", "os"]
+keywords = ["select"]
+include = [
+    "**/*.rs",
+    "Cargo.toml",
+    "README.md"
+]
+
+[target.'cfg(unix)'.dependencies.libc]
+version = "0.2.60"
+
+[target.'cfg(windows)'.dependencies.winapi]
+version = "0.3"
+features = ["winsock2"]
