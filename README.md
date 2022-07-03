@@ -1,6 +1,6 @@
 # selecting
 
-![Rust](https://github.com/DoumanAsh/uuid/workflows/Rust/badge.svg?branch=master)
+[![Rust](https://github.com/DoumanAsh/selecting/actions/workflows/rust.yml/badge.svg)](https://github.com/DoumanAsh/selecting/actions/workflows/rust.yml)
 [![Crates.io](https://img.shields.io/crates/v/selecting.svg)](https://crates.io/crates/selecting)
 [![Documentation](https://docs.rs/selecting/badge.svg)](https://docs.rs/crate/selecting/)
 
