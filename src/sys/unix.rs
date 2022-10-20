@@ -68,7 +68,7 @@ impl FdSet {
     }
 }
 
-pub fn select(read: &mut FdSet, write: &mut FdSet) -> io::Result<usize> {
+pub fn select(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet) -> io::Result<usize> {
     let nfds = cmp::max(read.max_fd, write.max_fd);
 
     let read_fd = match read.max_fd {
@@ -81,8 +81,13 @@ pub fn select(read: &mut FdSet, write: &mut FdSet) -> io::Result<usize> {
         _ => write.inner.as_mut_ptr(),
     };
 
+    let except_fd = match except.max_fd {
+        0 => ptr::null_mut(),
+        _ => except.inner.as_mut_ptr(),
+    };
+
     let result = unsafe {
-        libc::select(nfds, read_fd, write_fd, ptr::null_mut(), ptr::null_mut())
+        libc::select(nfds, read_fd, write_fd, except_fd, ptr::null_mut())
     };
 
     match result {
@@ -91,7 +96,7 @@ pub fn select(read: &mut FdSet, write: &mut FdSet) -> io::Result<usize> {
     }
 }
 
-pub fn select_timeout(read: &mut FdSet, write: &mut FdSet, timeout: time::Duration) -> io::Result<usize> {
+pub fn select_timeout(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet, timeout: time::Duration) -> io::Result<usize> {
     use core::convert::TryInto;
 
     let mut timeout = libc::timeval {
@@ -114,8 +119,13 @@ pub fn select_timeout(read: &mut FdSet, write: &mut FdSet, timeout: time::Durati
         _ => write.inner.as_mut_ptr(),
     };
 
+    let except_fd = match except.max_fd {
+        0 => ptr::null_mut(),
+        _ => except.inner.as_mut_ptr(),
+    };
+
     let result = unsafe {
-        libc::select(nfds, read_fd, write_fd, ptr::null_mut(), &mut timeout)
+        libc::select(nfds, read_fd, write_fd, except_fd, &mut timeout)
     };
 
     match result {

@@ -15,6 +15,7 @@ pub fn should_work_tcp_stream() {
     assert_eq!(error.kind(), io::ErrorKind::WouldBlock);
 
     selector.add_read(&stream);
+    selector.add_except(&stream);
 
     let result = selector.try_select().expect("To try select");
     assert_eq!(result.len(), 0);

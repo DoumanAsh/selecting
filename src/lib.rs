@@ -8,7 +8,7 @@
 mod sys;
 
 use sys::FdSet;
-pub use sys::{AsRawFd};
+pub use sys::AsRawFd;
 
 use std::io;
 use core::time;
@@ -23,6 +23,7 @@ pub struct SelectResult {
     count: usize,
     read: FdSet,
     write: FdSet,
+    except: FdSet,
 }
 
 impl SelectResult {
@@ -39,10 +40,17 @@ impl SelectResult {
     }
 
     #[inline]
-    ///Returns whether specified `source` is read ready.
+    ///Returns whether specified `source` is write ready.
     pub fn is_write<T: AsRawFd>(&self, source: &T) -> bool {
         self.write.is_present(source)
     }
+
+    #[inline]
+    ///Returns whether specified `source` is except ready.
+    pub fn is_except<T: AsRawFd>(&self, source: &T) -> bool {
+        self.except.is_present(source)
+    }
+
 }
 
 #[derive(Clone)]
@@ -63,6 +71,7 @@ impl SelectResult {
 pub struct Selector {
     read: FdSet,
     write: FdSet,
+    except: FdSet,
 }
 
 impl Selector {
@@ -72,6 +81,7 @@ impl Selector {
         Self {
             read: FdSet::new(),
             write: FdSet::new(),
+            except: FdSet::new(),
         }
     }
 
@@ -94,16 +104,33 @@ impl Selector {
     }
 
     #[inline]
+    ///Adds `source` to monitor for exceptional ops.
+    ///
+    ///Panics when goes over `FD_LIMIT`
+    pub fn add_except<T: AsRawFd>(&mut self, source: &T) {
+        assert!(self.except.len() < sys::FD_LIMIT);
+        self.except.add(source);
+    }
+
+
+    #[inline]
     ///Removes all fds from read monitoring
     pub fn clear_read(&mut self) {
         self.read.clear();
     }
 
     #[inline]
-    ///Removes all fds from read monitoring
+    ///Removes all fds from write monitoring
     pub fn clear_write(&mut self) {
         self.write.clear();
     }
+
+    #[inline]
+    ///Removes all fds from except monitoring
+    pub fn clear_except(&mut self) {
+        self.except.clear();
+    }
+
 
     #[inline]
     ///Performs select, awaiting indefinitely until at least one descriptor has changes.
@@ -112,9 +139,10 @@ impl Selector {
             count: 0,
             read: self.read.clone(),
             write: self.write.clone(),
+            except: self.except.clone(),
         };
 
-        result.count = sys::select(&mut result.read, &mut result.write)?;
+        result.count = sys::select(&mut result.read, &mut result.write, &mut result.except)?;
         Ok(result)
     }
 
@@ -125,9 +153,10 @@ impl Selector {
             count: 0,
             read: self.read.clone(),
             write: self.write.clone(),
+            except: self.except.clone(),
         };
 
-        result.count = sys::select_timeout(&mut result.read, &mut result.write, time::Duration::from_secs(0))?;
+        result.count = sys::select_timeout(&mut result.read, &mut result.write, &mut result.except, time::Duration::from_secs(0))?;
         Ok(result)
     }
 
@@ -138,9 +167,10 @@ impl Selector {
             count: 0,
             read: self.read.clone(),
             write: self.write.clone(),
+            except: self.except.clone(),
         };
 
-        result.count = sys::select_timeout(&mut result.read, &mut result.write, time)?;
+        result.count = sys::select_timeout(&mut result.read, &mut result.write, &mut result.except, time)?;
         Ok(result)
     }
 }

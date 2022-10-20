@@ -1,12 +1,12 @@
 [package]
 name = "selecting"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
 license = "BSL-1.0"
 repository = "https://github.com/DoumanAsh/selecting"
 readme = "README.md"
-description = "Cross-platform over select"
+description = "Cross-platform wrapper over select"
 categories = ["asynchronous", "network-programming", "os"]
 keywords = ["select"]
 include = [
