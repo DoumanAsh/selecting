@@ -69,7 +69,7 @@ impl FdSet {
 }
 
 pub fn select(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet) -> io::Result<usize> {
-    let nfds = cmp::max(read.max_fd, write.max_fd);
+    let nfds = cmp::max(cmp::max(read.max_fd, write.max_fd), except.max_fd) + 1;
 
     let read_fd = match read.max_fd {
         0 => ptr::null_mut(),
@@ -107,7 +107,7 @@ pub fn select_timeout(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet, t
         tv_usec: timeout.subsec_micros() as _,
     };
 
-    let nfds = cmp::max(read.max_fd, write.max_fd) + 1;
+    let nfds = cmp::max(cmp::max(read.max_fd, write.max_fd), except.max_fd) + 1;
 
     let read_fd = match read.max_fd {
         0 => ptr::null_mut(),
