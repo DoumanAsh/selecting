@@ -3,7 +3,9 @@ use super::AsRawFd;
 use core::{ptr, time};
 use std::io;
 use std::os::windows::io::RawSocket;
+use std::os::raw::{c_int, c_uint, c_long};
 
+const SOCKET_ERROR: c_int = -1;
 pub type RawFd = RawSocket;
 ///Limit on file descriptors in select's set
 pub const FD_LIMIT: usize = 64;
@@ -15,10 +17,25 @@ impl<T: std::os::windows::io::AsRawSocket> AsRawFd for T {
     }
 }
 
+mod winsock {
+    use super::*;
+
+    extern "system" {
+        pub fn select(nfds: c_int, readfds: *mut FdSet, writefds: *mut FdSet, exceptfds: *mut FdSet, timeout: *const TimeVal) -> c_int;
+    }
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct TimeVal {
+    tv_sec: c_long,
+    tv_usec: c_long,
+}
+
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct FdSet {
-    count: winapi::um::winsock2::u_int,
+    count: c_uint,
     fds: [RawSocket; 64],
 }
 
@@ -67,8 +84,6 @@ impl FdSet {
 }
 
 pub fn select(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet) -> io::Result<usize> {
-    use winapi::um::winsock2::SOCKET_ERROR;
-
     let read_fd = match read.len() {
         0 => ptr::null_mut(),
         _ => read as *mut _ as *mut _,
@@ -85,7 +100,7 @@ pub fn select(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet) -> io::Re
     };
 
     let result = unsafe {
-        winapi::um::winsock2::select(0, read_fd, write_fd, except_fd, ptr::null_mut())
+        winsock::select(0, read_fd, write_fd, except_fd, ptr::null_mut())
     };
 
     match result {
@@ -96,10 +111,8 @@ pub fn select(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet) -> io::Re
 
 pub fn select_timeout(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet, timeout: time::Duration) -> io::Result<usize> {
     use core::convert::TryInto;
-    use winapi::um::winsock2::SOCKET_ERROR;
-    use winapi::um::winsock2::timeval;
 
-    let timeout = timeval {
+    let timeout = TimeVal {
         tv_sec: match timeout.as_secs().try_into() {
             Ok(secs) => secs,
             Err(_) => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Duration as seconds doesn't fit timeval")),
@@ -123,7 +136,7 @@ pub fn select_timeout(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet, t
     };
 
     let result = unsafe {
-        winapi::um::winsock2::select(0, read_fd, write_fd, except_fd, &timeout)
+        winsock::select(0, read_fd, write_fd, except_fd, &timeout)
     };
 
     if result == SOCKET_ERROR {
