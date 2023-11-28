@@ -9,7 +9,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v1
@@ -41,3 +41,4 @@ jobs:
 
     - name: Test
       run: cargo test
+      timeout-minutes: 1
