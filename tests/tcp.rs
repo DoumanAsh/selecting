@@ -1,11 +1,9 @@
 use selecting::Selector;
 
-use std::thread::{self, sleep};
+use std::thread;
 
 use std::io::{self, Read, Write};
-use std::net::{TcpStream, TcpListener, Shutdown};
-use std::os::fd::AsRawFd;
-use std::time::Duration;
+use std::net::{TcpStream, TcpListener, Shutdown, SocketAddr, SocketAddrV4, Ipv4Addr};
 
 #[test]
 pub fn should_work_tcp_stream() {
@@ -35,10 +33,13 @@ pub fn should_work_tcp_stream() {
 
 #[test]
 pub fn should_work_with_multiple_fds() {
+    const LOCALHOST: SocketAddr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 65000));
     let mut selector = Selector::new();
 
-    let server = thread::spawn(|| {
-        let listener = TcpListener::bind("localhost:1234").expect("Couldn't bind to the address...");
+    let (client_notifier, client_notification) = std::sync::mpsc::channel();
+    let (server_notifier, server_notification) = std::sync::mpsc::channel();
+    let server = thread::spawn(move || {
+        let listener = TcpListener::bind(LOCALHOST).expect("Couldn't bind to the address...");
         let s1 = listener.accept().expect("Couldn't accept the connection...").0;
         let mut s2 = listener.accept().expect("Couldn't accept the connection...").0;
         let mut s3 = listener.accept().expect("Couldn't accept the connection...").0;
@@ -50,35 +51,40 @@ pub fn should_work_with_multiple_fds() {
         s2.write(b"Hello from s2").expect("Couldn't write to the socket...");
         s3.write(b"Hello from s3").expect("Couldn't write to the socket...");
 
-        sleep(Duration::from_millis(100));
+        client_notifier.send(()).expect("send client notification");
+        server_notification.recv().expect("receive server notification");
 
         s1.shutdown(Shutdown::Both).expect("Couldn't shutdown the socket...");
         s2.shutdown(Shutdown::Both).expect("Couldn't shutdown the socket...");
         s3.shutdown(Shutdown::Both).expect("Couldn't shutdown the socket...");
     });
 
-    
-    let s1 = TcpStream::connect("localhost:1234").expect("Couldn't connect to the server...");
-    let s2 = TcpStream::connect("localhost:1234").expect("Couldn't connect to the server...");
-    let s3 = TcpStream::connect("localhost:1234").expect("Couldn't connect to the server...");
-    
+    let s1 = TcpStream::connect(LOCALHOST).expect("Couldn't connect to the server...");
+    let s2 = TcpStream::connect(LOCALHOST).expect("Couldn't connect to the server...");
+    let s3 = TcpStream::connect(LOCALHOST).expect("Couldn't connect to the server...");
+
     s1.set_nonblocking(true).expect("set_nonblocking call failed");
     s2.set_nonblocking(true).expect("set_nonblocking call failed");
     s3.set_nonblocking(true).expect("set_nonblocking call failed");
-    
+
+    client_notification.recv().expect("receive server notifcation");
     selector.add_read(&s1);
     selector.add_read(&s2);
     selector.add_read(&s3);
-    
-    println!("s1 fd: {}", s1.as_raw_fd());
-    println!("s2 fd: {}", s2.as_raw_fd());
-    println!("s3 fd: {}", s3.as_raw_fd());
-    
     let result = selector.select().expect("To try select");
     assert_eq!(result.len(), 2);
     assert!(!result.is_read(&s1));
     assert!(result.is_read(&s2));
     assert!(result.is_read(&s3));
 
+    server_notifier.send(()).expect("send server notifcation");
+
     server.join().expect("Couldn't join the server thread...");
+
+    let result = selector.select().expect("To try select");
+    //Shutdown should trigger read
+    assert_eq!(result.len(), 3);
+    assert!(result.is_read(&s1));
+    assert!(result.is_read(&s2));
+    assert!(result.is_read(&s3));
 }

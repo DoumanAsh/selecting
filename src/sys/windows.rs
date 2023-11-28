@@ -69,8 +69,23 @@ impl FdSet {
 pub fn select(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet) -> io::Result<usize> {
     use winapi::um::winsock2::SOCKET_ERROR;
 
+    let read_fd = match read.len() {
+        0 => ptr::null_mut(),
+        _ => read as *mut _ as *mut _,
+    };
+
+    let write_fd = match write.len() {
+        0 => ptr::null_mut(),
+        _ => write as *mut _ as *mut _,
+    };
+
+    let except_fd = match except.len() {
+        0 => ptr::null_mut(),
+        _ => except as *mut _ as *mut _
+    };
+
     let result = unsafe {
-        winapi::um::winsock2::select(0, read as *mut _ as *mut _, write as *mut _ as *mut _, except as *mut _ as *mut _, ptr::null_mut())
+        winapi::um::winsock2::select(0, read_fd, write_fd, except_fd, ptr::null_mut())
     };
 
     match result {
@@ -92,8 +107,23 @@ pub fn select_timeout(read: &mut FdSet, write: &mut FdSet, except: &mut FdSet, t
         tv_usec: timeout.subsec_micros() as _,
     };
 
+    let read_fd = match read.len() {
+        0 => ptr::null_mut(),
+        _ => read as *mut _ as *mut _,
+    };
+
+    let write_fd = match write.len() {
+        0 => ptr::null_mut(),
+        _ => write as *mut _ as *mut _,
+    };
+
+    let except_fd = match except.len() {
+        0 => ptr::null_mut(),
+        _ => except as *mut _ as *mut _
+    };
+
     let result = unsafe {
-        winapi::um::winsock2::select(0, read as *mut _ as *mut _, write as *mut _ as *mut _, except as *mut _ as *mut _, &timeout)
+        winapi::um::winsock2::select(0, read_fd, write_fd, except_fd, &timeout)
     };
 
     if result == SOCKET_ERROR {
