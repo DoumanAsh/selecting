@@ -76,12 +76,11 @@ pub fn should_work_with_multiple_fds() {
     // Wait for the server to send the data
     client_notification.recv().expect("receive server notifcation");
 
+    selector.add_read(&s1);
+    selector.add_read(&s2);
+    selector.add_read(&s3);
     loop {
-        selector.add_read(&s1);
-        selector.add_read(&s2);
-        selector.add_read(&s3);
         let result = selector.select().expect("To try select");
-        selector.clear_read();
         let len = result.len();
         assert!(len <= 2);
         if len == 2 {
@@ -94,9 +93,6 @@ pub fn should_work_with_multiple_fds() {
 
     server.join().expect("Couldn't join the server thread...");
 
-    selector.add_read(&s1);
-    selector.add_read(&s2);
-    selector.add_read(&s3);
     let result = selector.select().expect("To try select");
     //Shutdown should trigger read
     assert_eq!(result.len(), 3);
